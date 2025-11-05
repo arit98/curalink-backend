@@ -4,9 +4,7 @@ from app.api.router import api_router
 
 app = FastAPI(title="CuraLink API", version="0.1")
 
-origins = [
-    "https://curalink-ui.vercel.app/",
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
