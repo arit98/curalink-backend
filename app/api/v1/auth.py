@@ -5,6 +5,8 @@ from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user_schema import UserCreate, UserOut, Token
 from app.core.security import hash_password, verify_password, create_access_token
+from app.models.researcher_profile import ResearcherProfile 
+from app.models.patient_profile import PatientProfile
 
 router = APIRouter()
 
@@ -27,14 +29,25 @@ async def login(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     user = q.scalar_one_or_none()
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
+
     token = create_access_token(user_id=user.id, email=user.email, role=user.role)
-    
+
+    has_onboarded = False
+    if user.role == 1:  # researcher
+        q_profile = await db.execute(select(ResearcherProfile).where(ResearcherProfile.user_id == user.id))
+        profile = q_profile.scalar_one_or_none()
+        has_onboarded = bool(profile)
+    elif user.role == 0:  # patient
+        q_profile = await db.execute(select(PatientProfile).where(PatientProfile.user_id == user.id))
+        profile = q_profile.scalar_one_or_none()
+        has_onboarded = bool(profile)
+
     return {
         "access_token": token,
         "token_type": "Bearer",
         "id": str(user.id),
         "role": user.role,
+        "has_onboarded": has_onboarded,
         "user": {
             "id": str(user.id),
             "email": user.email,

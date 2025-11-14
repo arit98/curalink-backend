@@ -11,14 +11,6 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password[:72], hashed_password)
 
-# def create_access_token(subject: str, expires_minutes: int | None = None):
-#     if expires_minutes is None:
-#         expires_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
-#     expire = datetime.utcnow() + timedelta(minutes=expires_minutes)
-#     to_encode = {"sub": subject, "exp": expire}
-#     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
-#     return encoded_jwt
-
 def create_access_token(user_id: int, email: str, role: int | None = None, expires_delta: timedelta | None = None):
     to_encode = {"userId": int(user_id), "email": str(email)}
     if role is not None:
