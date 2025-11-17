@@ -9,7 +9,7 @@ app = FastAPI(title="CuraLink API", version="0.1")
 templates = Jinja2Templates(directory="app/template")
 
 origins = [
-    "https://curalink-ui.vercel.app/"
+    "*"
 ]
 
 app.add_middleware(
