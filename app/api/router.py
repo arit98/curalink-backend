@@ -7,6 +7,8 @@ from app.api.v1.favourites import router as favourites_router
 from app.api.v1.onboarding import router as onboarding_router
 from app.api.v1.forums import router as forums_router
 from app.api.v1.forum.categories import router as forum_categories_router
+from app.api.v1.forum.reply import router as forum_reply_router
+from app.api.v1.pdf import router as pdf_router
 
 
 api_router = APIRouter()
@@ -19,3 +21,5 @@ api_router.include_router(favourites_router, prefix="/favourites", tags=["favour
 api_router.include_router(onboarding_router, prefix="/onboarding", tags=["onboarding"])
 api_router.include_router(forums_router, prefix="/forums", tags=["forums"])
 api_router.include_router(forum_categories_router, prefix="/forums/categories", tags=["forum-categories"])
+api_router.include_router(forum_reply_router, prefix="/forums", tags=["forum-reply"])
+api_router.include_router(pdf_router, prefix="/pdf", tags=["pdf"])

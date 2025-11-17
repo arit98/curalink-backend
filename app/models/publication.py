@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, func
+from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, func, ForeignKey
 from app.db.database import Base
 
 
@@ -17,6 +17,7 @@ class Publication(Base):
     methodology = Column(Text, nullable=True)
     results = Column(Text, nullable=True)
     conclusion = Column(Text, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

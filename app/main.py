@@ -8,14 +8,17 @@ import datetime
 app = FastAPI(title="CuraLink API", version="0.1")
 templates = Jinja2Templates(directory="app/template")
 
-origins = ["*"]
+origins = [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080"
+]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*", "Authorization"],
+    allow_headers=["*"],
 )
 
 app.include_router(api_router, prefix="/api/v1")

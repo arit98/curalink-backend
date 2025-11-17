@@ -23,10 +23,31 @@ async def create_trial(
     authorization: str = Header(None),
 ):
     token = authorization.split(" ")[1] if authorization else None
-    check_researcher_role(token)
+    payload = check_researcher_role(token)
+
+    # Extract user_id from token payload
+    sub = payload.get("email") or payload.get("userId") or payload.get("sub")
+    user = None
+    if sub is not None:
+        if isinstance(sub, str) and "@" in sub:
+            q = await db.execute(select(User).where(User.email == sub))
+            user = q.scalar_one_or_none()
+        else:
+            try:
+                user_id = int(sub)
+                q = await db.execute(select(User).where(User.id == user_id))
+                user = q.scalar_one_or_none()
+            except (ValueError, TypeError):
+                q = await db.execute(select(User).where(User.email == str(sub)))
+                user = q.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
 
     # Use model-compatible dict (exclude unset to allow DB defaults)
-    new_trial = Trial(**trial_data.dict(exclude_unset=True))
+    trial_dict = trial_data.model_dump(exclude_unset=True)
+    trial_dict["user_id"] = user.id
+    new_trial = Trial(**trial_dict)
     db.add(new_trial)
     await db.commit()
     await db.refresh(new_trial)
@@ -41,12 +62,38 @@ async def update_trial(
     authorization: str = Header(None),
 ):
     token = authorization.split(" ")[1] if authorization else None
-    check_researcher_role(token)
+    payload = check_researcher_role(token)
+
+    # Extract user_id from token payload
+    sub = payload.get("email") or payload.get("userId") or payload.get("sub")
+    user = None
+    if sub is not None:
+        if isinstance(sub, str) and "@" in sub:
+            q = await db.execute(select(User).where(User.email == sub))
+            user = q.scalar_one_or_none()
+        else:
+            try:
+                user_id = int(sub)
+                q = await db.execute(select(User).where(User.id == user_id))
+                user = q.scalar_one_or_none()
+            except (ValueError, TypeError):
+                q = await db.execute(select(User).where(User.email == str(sub)))
+                user = q.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
 
     result = await db.execute(select(Trial).where(Trial.id == trial_id))
     trial = result.scalar_one_or_none()
     if not trial:
         raise HTTPException(status_code=404, detail="Trial not found")
+
+    # Verify ownership - only the creator can update
+    if trial.user_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only update your own clinical trials"
+        )
 
     for key, value in trial_data.dict().items():
         setattr(trial, key, value)
@@ -63,12 +110,38 @@ async def delete_trial(
     authorization: str = Header(None),
 ):
     token = authorization.split(" ")[1] if authorization else None
-    check_researcher_role(token)
+    payload = check_researcher_role(token)
+
+    # Extract user_id from token payload
+    sub = payload.get("email") or payload.get("userId") or payload.get("sub")
+    user = None
+    if sub is not None:
+        if isinstance(sub, str) and "@" in sub:
+            q = await db.execute(select(User).where(User.email == sub))
+            user = q.scalar_one_or_none()
+        else:
+            try:
+                user_id = int(sub)
+                q = await db.execute(select(User).where(User.id == user_id))
+                user = q.scalar_one_or_none()
+            except (ValueError, TypeError):
+                q = await db.execute(select(User).where(User.email == str(sub)))
+                user = q.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
 
     result = await db.execute(select(Trial).where(Trial.id == trial_id))
     trial = result.scalar_one_or_none()
     if not trial:
         raise HTTPException(status_code=404, detail="Trial not found")
+
+    # Verify ownership - only the creator can delete
+    if trial.user_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only delete your own clinical trials"
+        )
 
     await db.delete(trial)
     await db.commit()

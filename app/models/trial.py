@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Text, Boolean, JSON, ForeignKey
 from app.db.database import Base
 
 
@@ -17,3 +17,4 @@ class Trial(Base):
     institution = Column(String, nullable=True)
     enrollment = Column(String, nullable=True)
     status = Column(String, default="active")
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

@@ -24,13 +24,79 @@ async def create_publication(
     authorization: str = Header(None),
 ):
     token = authorization.split(" ")[1] if authorization else None
-    check_researcher_role(token)
+    payload = check_researcher_role(token)
 
-    new_pub = Publication(**publication_data.dict(exclude_unset=True))
+    # Extract user_id from token payload
+    sub = payload.get("email") or payload.get("userId") or payload.get("sub")
+    user = None
+    if sub is not None:
+        if isinstance(sub, str) and "@" in sub:
+            q = await db.execute(select(User).where(User.email == sub))
+            user = q.scalar_one_or_none()
+        else:
+            try:
+                user_id = int(sub)
+                q = await db.execute(select(User).where(User.id == user_id))
+                user = q.scalar_one_or_none()
+            except (ValueError, TypeError):
+                q = await db.execute(select(User).where(User.email == str(sub)))
+                user = q.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    pub_dict = publication_data.dict(exclude_unset=True)
+    pub_dict["user_id"] = user.id
+    new_pub = Publication(**pub_dict)
     db.add(new_pub)
     await db.commit()
     await db.refresh(new_pub)
     return new_pub
+
+
+@router.delete("/{publication_id}")
+async def delete_publication(
+    publication_id: int,
+    db: AsyncSession = Depends(get_db),
+    authorization: str = Header(None),
+):
+    token = authorization.split(" ")[1] if authorization else None
+    payload = check_researcher_role(token)
+
+    # Extract user_id from token payload
+    sub = payload.get("email") or payload.get("userId") or payload.get("sub")
+    user = None
+    if sub is not None:
+        if isinstance(sub, str) and "@" in sub:
+            q = await db.execute(select(User).where(User.email == sub))
+            user = q.scalar_one_or_none()
+        else:
+            try:
+                user_id = int(sub)
+                q = await db.execute(select(User).where(User.id == user_id))
+                user = q.scalar_one_or_none()
+            except (ValueError, TypeError):
+                q = await db.execute(select(User).where(User.email == str(sub)))
+                user = q.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    result = await db.execute(select(Publication).where(Publication.id == publication_id))
+    publication = result.scalar_one_or_none()
+    if not publication:
+        raise HTTPException(status_code=404, detail="Publication not found")
+
+    # Verify ownership - only the creator can delete
+    if publication.user_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only delete your own publications"
+        )
+
+    await db.delete(publication)
+    await db.commit()
+    return {"message": "Publication deleted successfully"}
 
 
 @router.post("/{publication_id}/favourite")
